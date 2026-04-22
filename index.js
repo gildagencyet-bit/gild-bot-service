@@ -1,6 +1,5 @@
 ‎const TelegramBot = require('node-telegram-bot-api');
-‎const admin = require('firebase-admin');
-‎
+
 ‎// Firebase Setup
 ‎const serviceAccount = require("./firebase-key.json");
 ‎if (!admin.apps.length) {
