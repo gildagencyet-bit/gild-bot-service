@@ -255,7 +255,7 @@ bot.on('callback_query', (query) => {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "📧 Email", url: "mailto:contact@gildagency.com" }],
-                    [{ text: "✈️ Telegram Admin", url: "https://t.me/YourAdminUsername" }],
+                    [{ text: "✈️ Telegram Admin", url: "https://t.me/YourAdminUsername" }], // YourAdminUsername የሚለውን በራስህ ቀይረው
                     [{ text: "🔙 Back", callback_data: 'more' }]
                 ]
             }
