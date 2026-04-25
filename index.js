@@ -10,20 +10,18 @@ const usersCurrency = {};
 
 const RATE = 160; 
 
-function formatPrice(minEtb, maxEtb = null, chatId) {
+// ዋጋን ለማስተካከል (ለአንድ ዋጋ ወይም ለ Range)
+function getPrice(minEtb, maxEtb = null, chatId) {
     const curr = usersCurrency[chatId] || 'ETB';
     if (curr === 'USD') {
-        if (maxEtb) {
-            return `$${(minEtb / RATE).toFixed(2)} - $${(maxEtb / RATE).toFixed(2)}`;
-        }
+        if (maxEtb) return `$${(minEtb / RATE).toFixed(2)} - $${(maxEtb / RATE).toFixed(2)}`;
         return `$${(minEtb / RATE).toFixed(2)}`;
     }
-    if (maxEtb) {
-        return `${minEtb.toLocaleString()} - ${maxEtb.toLocaleString()} ETB`;
-    }
+    if (maxEtb) return `${minEtb.toLocaleString()} - ${maxEtb.toLocaleString()} ETB`;
     return `${minEtb.toLocaleString()} ETB`;
 }
 
+// ዋናው ሜኑ Button
 function getMainMenu(chatId) {
     const hasForm = usersData[chatId] && usersData[chatId].isComplete;
     return {
@@ -35,9 +33,12 @@ function getMainMenu(chatId) {
     };
 }
 
+// ከስር የሚቀመጠው ቋሚ ሜኑ (Reply Keyboard)
 const bottomMenu = {
     reply_markup: {
-        keyboard: [[{ text: "💱 Change Currency" }]],
+        keyboard: [
+            [{ text: "🌐 Language / ቋንቋ" }, { text: "💱 Currency" }]
+        ],
         resize_keyboard: true,
         persistent: true
     }
@@ -48,28 +49,42 @@ bot.onText(/\/start/, (msg) => {
     usersCurrency[chatId] = 'ETB'; 
     
     bot.sendMessage(chatId, "እንኳን በደህና መጡ! / Welcome!", bottomMenu).then(() => {
-        bot.sendMessage(chatId, "እባክዎ ቋንቋ ያስመርጡ / Please select a language:", {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🇪🇹 አማርኛ", callback_data: 'lang_selected' }, { text: "🇬🇧 English", callback_data: 'lang_selected' }]
-                ]
-            }
-        });
+        sendLanguageSelection(chatId);
     });
 });
 
-bot.onText(/\/(currency|cur)/i, (msg) => {
-    toggleCurrency(msg.chat.id);
-});
+function sendLanguageSelection(chatId) {
+    bot.sendMessage(chatId, "እባክዎ ቋንቋ ያስመርጡ / Please select a language:", {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🇪🇹 አማርኛ", callback_data: 'lang_selected' }, { text: "🇬🇧 English", callback_data: 'lang_selected' }]
+            ]
+        }
+    });
+}
 
+// የፅሁፍ እና የ Command (Bottom Menu) ተቀባይ
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
     if (!text) return;
 
-    if (text === "💱 Change Currency") {
-        toggleCurrency(chatId);
+    if (text === "🌐 Language / ቋንቋ") {
+        sendLanguageSelection(chatId);
+        return;
+    }
+
+    if (text === "💱 Currency" || text.toLowerCase() === '/currency' || text.toLowerCase() === '/cur') {
+        bot.sendMessage(chatId, "<b>Exchange rate: 1 USD = 160 ETB</b>\n\nእባክዎ መገበያያ ይምረጡ:", {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "USD ($)", callback_data: 'set_curr_usd' }],
+                    [{ text: "ETB (ብር)", callback_data: 'set_curr_etb' }]
+                ]
+            }
+        });
         return;
     }
 
@@ -109,23 +124,32 @@ bot.on('message', (msg) => {
     }
 });
 
-function toggleCurrency(chatId) {
-    usersCurrency[chatId] = (usersCurrency[chatId] === 'ETB') ? 'USD' : 'ETB';
-    const curr = usersCurrency[chatId];
-    bot.sendMessage(chatId, `Currency changed to: ${curr}. Menu is updated.`, {
-        reply_markup: getMainMenu(chatId)
-    });
-}
-
+// Callback (Button ሲነካ)
 bot.on('callback_query', (query) => {
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const data = query.data;
 
-    if (data === 'lang_selected') {
-        bot.editMessageText("ቋንቋ መርጠዋል። ከታች ካለው Menu ይምረጡ፡", {
-            chat_id: chatId, message_id: messageId, reply_markup: getMainMenu(chatId)
+    // Currency Setting
+    if (data === 'set_curr_usd' || data === 'set_curr_etb') {
+        usersCurrency[chatId] = data === 'set_curr_usd' ? 'USD' : 'ETB';
+        bot.answerCallbackQuery(query.id, { text: "Successful", show_alert: true });
+        
+        // ያለፈውን Button አጥፍቶ አዲስ ሜኑ መላክ (Disable old buttons)
+        bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: messageId });
+        bot.sendMessage(chatId, `Currency set to ${usersCurrency[chatId]}.\n\n<b>Main Menu:</b>`, {
+            parse_mode: 'HTML', reply_markup: getMainMenu(chatId)
         });
+        return;
+    }
+
+    if (data === 'lang_selected') {
+        // ያለፈውን Button አጥፍቶ አዲስ ሜኑ መላክ (Disable old buttons)
+        bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: messageId });
+        bot.sendMessage(chatId, "ቋንቋ መርጠዋል። ከታች ካለው Menu ይምረጡ፡", {
+            reply_markup: getMainMenu(chatId)
+        });
+        return;
     }
 
     if (data === 'main_menu') {
@@ -135,7 +159,7 @@ bot.on('callback_query', (query) => {
         });
     }
 
-    // FORM LOGIC
+    // ==== FORM ====
     if (data === 'fill_form' || data === 'edit_form') {
         usersData[chatId] = { isComplete: false };
         usersState[chatId] = 'AWAITING_NAME';
@@ -163,12 +187,14 @@ bot.on('callback_query', (query) => {
         usersData[chatId].needs = needMap[data];
         usersData[chatId].isComplete = true;
         usersState[chatId] = null;
-        bot.editMessageText("መዝግበነዋል!", {
-            chat_id: chatId, message_id: messageId, reply_markup: getMainMenu(chatId)
+        
+        bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: messageId });
+        bot.sendMessage(chatId, "✅ መዝግበነዋል! ወደ ዋናው ገፅ ተመልሰዋል።", {
+            reply_markup: getMainMenu(chatId)
         });
     }
 
-    // SERVICE MENU
+    // ==== SERVICE ====
     if (data === 'service') {
         bot.editMessageText("Service Menu:", {
             chat_id: chatId, message_id: messageId,
@@ -196,11 +222,11 @@ bot.on('callback_query', (query) => {
         });
     }
 
-    // PACKAGES DETAILS
+    // PACKAGES DETAILS (HTML Parsing for Bold and Italics)
     if (data === 'pkg_luster') {
-        const text = `GILD Luster : A foundational suite designed to prepare your business for the market with an undeniable premium presence and solid brand architecture.\n\nBrand Architecture: Comprehensive visual identity setup including custom logo design, premium color palette, typography selection, and brand naming.\n\nDigital Authority Setup: High-end optimization and setup of Facebook, Instagram, and TikTok profiles to reflect absolute prestige.\n\nStrategic Content Design: 12 visually striking, high-quality graphic posts and 2 engaging short-form videos (Reels/Shorts) per month.\n\nCorporate Stationery: Elegant design suite for business cards, letterheads, and professional email signatures.\n\nCommunity Engagement: Proactive and professional management of audience interactions, comments, and direct messages (DMs).\n\nGrowth Consultation: A dedicated monthly strategy session to review digital performance and align future objectives.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
+        const text = `<b>GILD Luster</b>\n<i>A foundational suite designed to prepare your business for the market with an undeniable premium presence and solid brand architecture.</i>\n\n<b>Brand Architecture:</b> Comprehensive visual identity setup including custom logo design, premium color palette, typography selection, and brand naming.\n\n<b>Digital Authority Setup:</b> High-end optimization and setup of Facebook, Instagram, and TikTok profiles to reflect absolute prestige.\n\n<b>Strategic Content Design:</b> 12 visually striking, high-quality graphic posts and 2 engaging short-form videos (Reels/Shorts) per month.\n\n<b>Corporate Stationery:</b> Elegant design suite for business cards, letterheads, and professional email signatures.\n\n<b>Community Engagement:</b> Proactive and professional management of audience interactions, comments, and direct messages (DMs).\n\n<b>Growth Consultation:</b> A dedicated monthly strategy session to review digital performance and align future objectives.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
         bot.editMessageText(text, {
-            chat_id: chatId, message_id: messageId,
+            chat_id: chatId, message_id: messageId, parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "ለ 1 ወር", callback_data: 'dur_lus_1' }, { text: "ለ 2 ወር", callback_data: 'dur_lus_2' }, { text: "ለ 3 ወር", callback_data: 'dur_lus_3' }],
@@ -211,9 +237,9 @@ bot.on('callback_query', (query) => {
     }
 
     if (data === 'pkg_radiant') {
-        const text = `GILD Radiant : An aggressive growth accelerator engineered to convert visibility into measurable sales and establish dominant market prominence.\n\nConversion Copywriting: Psychological and persuasive content creation designed to turn spectators into loyal clients.\n\nAdvertising Mastery: Management of 5 targeted ad campaigns engineered for maximum ROI and lead generation.\n\nThe GILD Landing Page: A luxury, high-conversion single-page website designed to showcase and sell your primary offer.\n\nLocal Search Dominance: Optimization of Google Maps and Search Engine Presence (SEO) to ensure you are the first choice.\n\nCreative Dominance: 20+ custom posts and stories per month, plus one professional product or service photoshoot session.\n\nPerformance Intelligence: Comprehensive monthly reports detailing sales funnel performance and ad metrics.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
+        const text = `<b>GILD Radiant</b>\n<i>An aggressive growth accelerator engineered to convert visibility into measurable sales and establish dominant market prominence.</i>\n\n<b>Conversion Copywriting:</b> Psychological and persuasive content creation designed to turn spectators into loyal clients.\n\n<b>Advertising Mastery:</b> Management of 5 targeted ad campaigns engineered for maximum ROI and lead generation.\n\n<b>The GILD Landing Page:</b> A luxury, high-conversion single-page website designed to showcase and sell your primary offer.\n\n<b>Local Search Dominance:</b> Optimization of Google Maps and Search Engine Presence (SEO) to ensure you are the first choice.\n\n<b>Creative Dominance:</b> 20+ custom posts and stories per month, plus one professional product or service photoshoot session.\n\n<b>Performance Intelligence:</b> Comprehensive monthly reports detailing sales funnel performance and ad metrics.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
         bot.editMessageText(text, {
-            chat_id: chatId, message_id: messageId,
+            chat_id: chatId, message_id: messageId, parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "ለ 1 ወር", callback_data: 'dur_rad_1' }, { text: "ለ 2 ወር", callback_data: 'dur_rad_2' }, { text: "ለ 3 ወር", callback_data: 'dur_rad_3' }],
@@ -224,9 +250,9 @@ bot.on('callback_query', (query) => {
     }
 
     if (data === 'pkg_24k') {
-        const text = `GILD 24K : The ultimate 360-degree VIP experience designed to transform your brand into a market-leading empire.\n\nOmnichannel Mastery: Daily high-impact posting and full management across all major social media platforms.\n\nCinematic Storytelling: 4 commercial-grade, cinematic brand videos that define your industry authority.\n\nAI-Powered 24/7 Support: Development of a smart AI bot for Telegram/Messenger to automate inquiries and sales leads.\n\nSales Ecosystem: Full sales funnel construction, Pixel integration, and advanced retargeting strategies.\n\nSOP Development: Creation of detailed Standard Operating Procedures for your internal workflow, ensuring business continuity without your constant presence.\n\nDigital PR & Authority: Strategic placements and mentions to build high-level brand prestige.\n\nVIP Concierge: 24/7 direct access and priority support for all urgent business needs.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
+        const text = `<b>GILD 24K</b>\n<i>The ultimate 360-degree VIP experience designed to transform your brand into a market-leading empire.</i>\n\n<b>Omnichannel Mastery:</b> Daily high-impact posting and full management across all major social media platforms.\n\n<b>Cinematic Storytelling:</b> 4 commercial-grade, cinematic brand videos that define your industry authority.\n\n<b>AI-Powered 24/7 Support:</b> Development of a smart AI bot for Telegram/Messenger to automate inquiries and sales leads.\n\n<b>Sales Ecosystem:</b> Full sales funnel construction, Pixel integration, and advanced retargeting strategies.\n\n<b>SOP Development:</b> Creation of detailed Standard Operating Procedures for your internal workflow, ensuring business continuity without your constant presence.\n\n<b>Digital PR & Authority:</b> Strategic placements and mentions to build high-level brand prestige.\n\n<b>VIP Concierge:</b> 24/7 direct access and priority support for all urgent business needs.\n\nየአገልግሎት ጊዜ ይምረጡ:`;
         bot.editMessageText(text, {
-            chat_id: chatId, message_id: messageId,
+            chat_id: chatId, message_id: messageId, parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "ለ 1 ወር", callback_data: 'dur_24k_1' }, { text: "ለ 2 ወር", callback_data: 'dur_24k_2' }, { text: "ለ 3 ወር", callback_data: 'dur_24k_3' }],
@@ -236,22 +262,22 @@ bot.on('callback_query', (query) => {
         });
     }
 
-    // DURATIONS AND PRICES
+    // PRICES AND DURATIONS
     const packagePrices = {
-        'dur_lus_1': { price: formatPrice(20000, null, chatId), back: 'pkg_luster' },
-        'dur_lus_2': { price: formatPrice(35000, null, chatId), back: 'pkg_luster' },
-        'dur_lus_3': { price: formatPrice(50000, null, chatId), back: 'pkg_luster' },
-        'dur_rad_1': { price: formatPrice(35000, null, chatId), back: 'pkg_radiant' },
-        'dur_rad_2': { price: formatPrice(65000, null, chatId), back: 'pkg_radiant' },
-        'dur_rad_3': { price: formatPrice(90000, null, chatId), back: 'pkg_radiant' },
-        'dur_24k_1': { price: formatPrice(70000, null, chatId), back: 'pkg_24k' },
-        'dur_24k_2': { price: formatPrice(130000, null, chatId), back: 'pkg_24k' },
-        'dur_24k_3': { price: formatPrice(205000, null, chatId), back: 'pkg_24k' }
+        'dur_lus_1': { price: getPrice(20000, null, chatId), back: 'pkg_luster' },
+        'dur_lus_2': { price: getPrice(35000, null, chatId), back: 'pkg_luster' },
+        'dur_lus_3': { price: getPrice(50000, null, chatId), back: 'pkg_luster' },
+        'dur_rad_1': { price: getPrice(35000, null, chatId), back: 'pkg_radiant' },
+        'dur_rad_2': { price: getPrice(65000, null, chatId), back: 'pkg_radiant' },
+        'dur_rad_3': { price: getPrice(90000, null, chatId), back: 'pkg_radiant' },
+        'dur_24k_1': { price: getPrice(70000, null, chatId), back: 'pkg_24k' },
+        'dur_24k_2': { price: getPrice(130000, null, chatId), back: 'pkg_24k' },
+        'dur_24k_3': { price: getPrice(205000, null, chatId), back: 'pkg_24k' }
     };
 
     if (packagePrices[data]) {
-        bot.editMessageText(`Price: ${packagePrices[data].price}`, {
-            chat_id: chatId, message_id: messageId,
+        bot.editMessageText(`<b>Price:</b> ${packagePrices[data].price}`, {
+            chat_id: chatId, message_id: messageId, parse_mode: 'HTML',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "Pay", callback_data: 'pay_action' }],
@@ -261,11 +287,31 @@ bot.on('callback_query', (query) => {
         });
     }
 
-    // INDIVIDUAL SERVICES
+    // INDIVIDUAL SERVICES (With Monospace Font for instructions)
     if (data === 'individuals') {
-        const text = `Individuals service\n\nመግዛት ከፈለጉ ከታች ያሉትን ነክተው ይፃፉ:\n/Brand\n/LandingPage\n/Website\n/Bot\n/Logo\n/SEO\n/Strategy\n/BusinessCard`;
+        const text = `<b>Individuals Service</b>
+
+• Full Brand Identity (Logo + Brand Book): ${getPrice(7000, 10000, chatId)}
+• Landing Page Website (1 ገጽ): ${getPrice(10000, 15000, chatId)}
+• Full Business Website (ባለብዙ ገጽ): ${getPrice(30000, 60000, chatId)}+
+• Smart Telegram Bot (AI Integrated): ${getPrice(15000, 25000, chatId)}
+• LOGO ብቻውን: ${getPrice(5000, null, chatId)}
+• SEO ብቻ: ${getPrice(3000, null, chatId)}
+• Strategy ምክር ብቻ: ${getPrice(4000, null, chatId)}
+• BUSINESS CARD Design: ${getPrice(2000, null, chatId)}
+
+<code>መግዛት ምትፈልጉትን ነገር ከታች ባለው መልኩ / ብላችሁ ፃፉ፡
+/Brand
+/LandingPage
+/Website
+/Bot
+/Logo
+/SEO
+/Strategy
+/BusinessCard</code>`;
+        
         bot.editMessageText(text, {
-            chat_id: chatId, message_id: messageId,
+            chat_id: chatId, message_id: messageId, parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [[{ text: "Back", callback_data: 'service' }]] }
         });
     }
@@ -274,7 +320,7 @@ bot.on('callback_query', (query) => {
         bot.answerCallbackQuery(query.id, { text: "ክፍያ ለማካሄድ ያነጋግሩን!", show_alert: true });
     }
 
-    // MORE MENU
+    // ==== MORE MENU ====
     if (data === 'more') {
         bot.editMessageText("MORE..", {
             chat_id: chatId, message_id: messageId,
@@ -343,7 +389,7 @@ bot.on('callback_query', (query) => {
                     [{ text: "Tiktok", url: "https://www.tiktok.com/@gild.agency" }],
                     [{ text: "Instagram", url: "https://www.instagram.com/gild_agency" }],
                     [{ text: "X or Tweeter", url: "https://x.com/Gild_Agency" }],
-                    [{ text: "Youtube", url: "https://www.youtube.com/@GILDAGENCY" }],
+                    [{ text: "Youtube", url: "https://youtube.com/@GILDAGENCY" }],
                     [{ text: "Back", callback_data: 'more' }]
                 ]
             }
@@ -361,63 +407,55 @@ bot.on('callback_query', (query) => {
             }
         });
     }
-    
-    // BACK HANDLER FOR INDIVIDUALS TEXT RESPONSE
-    if (data === 'back_to_indiv') {
-        const text = `Individuals service\n\nመግዛት ከፈለጉ ከታች ያሉትን ነክተው ይፃፉ:\n/Brand\n/LandingPage\n/Website\n/Bot\n/Logo\n/SEO\n/Strategy\n/BusinessCard`;
-        bot.editMessageText(text, {
-            chat_id: chatId, message_id: messageId,
-            reply_markup: { inline_keyboard: [[{ text: "Back", callback_data: 'service' }]] }
-        });
-    }
 });
 
+// Individuals Command Receiver
 function handleIndividualCommands(chatId, text) {
     let responseText = "";
     let priceText = "";
 
     switch(text.toLowerCase()) {
         case '/brand':
-            responseText = "Full Brand Identity (Logo + Brand Book)";
-            priceText = formatPrice(7000, 10000, chatId);
+            responseText = "<b>Full Brand Identity (Logo + Brand Book)</b>";
+            priceText = getPrice(7000, 10000, chatId);
             break;
         case '/landingpage':
-            responseText = "Landing Page Website (1 ገጽ)\n(የ Hosting ወጪ ለብቻው ሆኖ)";
-            priceText = formatPrice(10000, 15000, chatId);
+            responseText = "<b>Landing Page Website (1 ገጽ)</b>\n(የ Hosting ወጪ ለብቻው ሆኖ)";
+            priceText = getPrice(10000, 15000, chatId);
             break;
         case '/website':
-            responseText = "Full Business Website (ባለብዙ ገጽ)\n(እንደ ስራው ስፋት)";
-            priceText = formatPrice(30000, 60000, chatId) + "+";
+            responseText = "<b>Full Business Website (ባለብዙ ገጽ)</b>\n(እንደ ስራው ስፋት)";
+            priceText = getPrice(30000, 60000, chatId) + "+";
             break;
         case '/bot':
-            responseText = "Smart Telegram Bot (AI Integrated)\n(እንደ ቦቱ ውስብስብነት)";
-            priceText = formatPrice(15000, 25000, chatId);
+            responseText = "<b>Smart Telegram Bot (AI Integrated)</b>\n(እንደ ቦቱ ውስብስብነት)";
+            priceText = getPrice(15000, 25000, chatId);
             break;
         case '/logo':
-            responseText = "LOGO ብቻውን";
-            priceText = formatPrice(5000, null, chatId);
+            responseText = "<b>LOGO ብቻውን</b>";
+            priceText = getPrice(5000, null, chatId);
             break;
         case '/seo':
-            responseText = "SEO ብቻ";
-            priceText = formatPrice(3000, null, chatId);
+            responseText = "<b>SEO ብቻ</b>";
+            priceText = getPrice(3000, null, chatId);
             break;
         case '/strategy':
-            responseText = "Strategy ምክር ብቻ";
-            priceText = formatPrice(4000, null, chatId);
+            responseText = "<b>Strategy ምክር ብቻ</b>";
+            priceText = getPrice(4000, null, chatId);
             break;
         case '/businesscard':
-            responseText = "BUSINESS CARD Design";
-            priceText = formatPrice(2000, null, chatId);
+            responseText = "<b>BUSINESS CARD Design</b>";
+            priceText = getPrice(2000, null, chatId);
             break;
         default:
             return; 
     }
 
-    bot.sendMessage(chatId, `${responseText}\n\nዋጋ: ${priceText}`, {
+    bot.sendMessage(chatId, `${responseText}\n\n<b>ዋጋ:</b> ${priceText}`, {
+        parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
-                [{ text: "Pay", callback_data: 'pay_action' }],
-                [{ text: "Back", callback_data: 'back_to_indiv' }]
+                [{ text: "Pay", callback_data: 'pay_action' }]
             ]
         }
     });
