@@ -1,5 +1,17 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express'); // <-- ይሄ ተጨምሯል
+
+// === የ Cron Job መቀስቀሻ (Express Server) ===
+const app = express();
+app.get('/', (req, res) => {
+    res.send('GILD Bot is Awake!');
+});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Web server is running on port ${PORT}`);
+});
+// ==========================================
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
