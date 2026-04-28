@@ -1,5 +1,12 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+// Port Error እንዳይፈጠር እና የ Cron Job ጥያቄን ለመቀበል (Keep-alive)
+const app = express();
+app.get('/', (req, res) => res.send('GILD Bot is Running!'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -10,6 +17,39 @@ const usersCurrency = {};
 const usersLang = {};
 
 const RATE = 160; 
+
+// ምስሎች (Images)
+const IMG_LANG = "https://i.postimg.cc/28c5Jg4h/1777350054899.png";
+const IMG_MAIN = "https://i.postimg.cc/zXsf8KcY/1777273692663.png";
+const IMG_FORM = "https://i.postimg.cc/tT4q25Yn/1777273702539.png";
+const IMG_LEGACY = "https://i.postimg.cc/PNsksz5H/1777273330007.png";
+const IMG_FAQ = "https://i.postimg.cc/BQKqYtnG/1777273717527.png";
+const IMG_PLATFORM = "https://i.postimg.cc/tRVTfBBc/1777273732729.png";
+const IMG_SUPPORT = "https://i.postimg.cc/fy4wDh8B/1777273744115.png";
+const IMG_PKG = "https://i.postimg.cc/0NbxSN3B/1777274294959.png";
+const IMG_CURR = "https://i.postimg.cc/hvqqN1G6/1777274316992.png";
+const IMG_VISION = "https://i.postimg.cc/bwvjXJzh/1777274287552-1.jpg";
+const IMG_STORY = "https://i.postimg.cc/SKB0zfcm/1777274278924-1.jpg";
+
+// ሜሴጅን በአዲስ (ከነ ምስሉ) ለመቀየር የሚረዳ ፈጣን Function
+function replaceMessage(chatId, messageId, text, replyMarkup, imageUrl = null) {
+    if (messageId) {
+        bot.deleteMessage(chatId, messageId).catch(() => {});
+    }
+    
+    if (imageUrl) {
+        bot.sendPhoto(chatId, imageUrl, {
+            caption: text,
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup
+        }).catch(() => {});
+    } else {
+        bot.sendMessage(chatId, text, {
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup
+        }).catch(() => {});
+    }
+}
 
 // የጎንዮሽ Menu ለማስተካከል
 bot.setMyCommands([
@@ -61,7 +101,7 @@ bot.onText(/\/language/, (msg) => sendLanguageSelection(msg.chat.id));
 function sendLanguageSelection(chatId) {
     const text = "Welcome to <b>GILD</b>. A standard of excellence in every interaction.\nPlease select your preferred language to proceed.\n\n<b>GILD</b> እንኳን በደህና መጡ። የላቀ ጥራትን ከክብር ጋር ያጣመረ አገልግሎት።\nለመቀጠል እባክዎ የሚመርጡትን ቋንቋ ይምረጡ።";
     
-    bot.sendPhoto(chatId, 'https://i.postimg.cc/28c5Jg4h/1777350054899.png', {
+    bot.sendPhoto(chatId, IMG_LANG, {
         caption: text,
         parse_mode: 'HTML',
         reply_markup: {
@@ -85,7 +125,7 @@ bot.on('message', (msg) => {
             ? "<b>Live Market Rates.</b> 📈\n\nOur services are valued based on current global standards.\nPlease choose your preferred currency.\n\n<i>(Exchange rate: 1 USD = 160 ETB)</i>" 
             : "<b>ወቅታዊ የገበያ ተመን።</b> 📈\n\nአገልግሎቶቻችን ዓለም አቀፍ ደረጃን በጠበቀ ዋጋ የቀረቡ ናቸው።\nእባክዎ የሚከፍሉበትን ገንዘብ አይነት ይምረጡ።\n\n<i>(የምንዛሬ ተመን: 1 USD = 160 ETB)</i>";
         
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/hvqqN1G6/1777274316992.png', {
+        bot.sendPhoto(chatId, IMG_CURR, {
             caption: msgText,
             parse_mode: 'HTML',
             reply_markup: {
@@ -166,9 +206,7 @@ bot.on('callback_query', (query) => {
         const msgTxt = isNowEn 
             ? "Explore the <b>GILD Ecosystem</b>. ✨\n\nHow may we elevate your vision today? Select an option below to begin your journey." 
             : "የ<b>GILD</b>ን አለም ይቃኙ። ✨\n\nዛሬ ራዕይዎን ለማሳካት በምን እንርዳዎት? ጉዞዎን ለመጀመር ከታች ካሉት አማራጮች አንዱን ይምረጡ።";
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/zXsf8KcY/1777273692663.png', { caption: msgTxt, parse_mode: 'HTML', reply_markup: getMainMenu(chatId) });
+        replaceMessage(chatId, messageId, msgTxt, getMainMenu(chatId), IMG_MAIN);
         return;
     }
 
@@ -181,8 +219,7 @@ bot.on('callback_query', (query) => {
             ? `${txt}\n\nExplore the <b>GILD Ecosystem</b>. ✨\nSelect an option below:` 
             : `${txt}\n\nየ<b>GILD</b>ን አለም ይቃኙ። ✨\nከታች ካሉት አማራጮች ይምረጡ፡`;
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/zXsf8KcY/1777273692663.png', { caption: msgTxt, parse_mode: 'HTML', reply_markup: getMainMenu(chatId) });
+        replaceMessage(chatId, messageId, msgTxt, getMainMenu(chatId), IMG_MAIN);
         return;
     }
 
@@ -191,9 +228,7 @@ bot.on('callback_query', (query) => {
         const msgTxt = isEn 
             ? "Explore the <b>GILD Ecosystem</b>. ✨\n\nHow may we elevate your vision today? Select an option below:" 
             : "የ<b>GILD</b>ን አለም ይቃኙ። ✨\n\nዛሬ ራዕይዎን ለማሳካት በምን እንርዳዎት? ከታች ይምረጡ፡";
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/zXsf8KcY/1777273692663.png', { caption: msgTxt, parse_mode: 'HTML', reply_markup: getMainMenu(chatId) });
+        replaceMessage(chatId, messageId, msgTxt, getMainMenu(chatId), IMG_MAIN);
     }
 
     // ==== FORM ====
@@ -204,9 +239,7 @@ bot.on('callback_query', (query) => {
         const txt = isEn 
             ? "<b>Exclusivity begins here.</b> ⚜️\n\nTo provide you with a personalized experience, please share your full name (e.g., Abebe Kebede):" 
             : "<b>ልዩነት ከዚህ ይጀምራል።</b> ⚜️\n\nእርሶን የሚመጥን አገልግሎት ለመስጠት እንዲቻል፣ እባክዎ ሙሉ ስምዎን ያስገቡ (ለምሳሌ፦ አበበ ከበደ)።";
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/tT4q25Yn/1777273702539.png', { caption: txt, parse_mode: 'HTML' });
+        replaceMessage(chatId, messageId, txt, undefined, IMG_FORM);
     }
 
     if (data.startsWith('city_')) {
@@ -215,9 +248,7 @@ bot.on('callback_query', (query) => {
         const txt = isEn 
             ? `<b>Location Confirmed.</b>\n\nPlease provide the official name of your Brand/Business:` 
             : `<b>አድራሻዎ ተረጋግጧል።</b>\n\nእባክዎ የብራንድዎን ወይም የድርጅትዎን ትክክለኛ ስም ከስር ያስገቡ፡`;
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, txt, { parse_mode: 'HTML' });
+        replaceMessage(chatId, messageId, txt, undefined);
     }
 
     if (data === 'my_form') {
@@ -226,15 +257,11 @@ bot.on('callback_query', (query) => {
             `<b>Review Your Profile.</b>\n\nPlease confirm the details below before we proceed with your request.\n\n• <b>Name:</b> ${d.name}\n• <b>Phone:</b> ${d.phone}\n• <b>Location:</b> ${d.address}\n• <b>Brand:</b> ${d.brand}\n• <b>Focus:</b> ${d.needs}` : 
             `<b>መረጃዎን ያረጋግጡ።</b>\n\nጥያቄዎን ከማስተናገዳችን በፊት፣ እባክዎ ከታች ያሉትን መረጃዎች ትክክለኛነት ያረጋግጡ።\n\n• <b>ስም:</b> ${d.name}\n• <b>ስልክ:</b> ${d.phone}\n• <b>አድራሻ:</b> ${d.address}\n• <b>ብራንድ:</b> ${d.brand}\n• <b>ትኩረት:</b> ${d.needs}`;
         
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, text, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "✏️ EDIT PROFILE" : "✏️ መረጃ አስተካክል", callback_data: 'edit_form' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
-                ]
-            }
+        replaceMessage(chatId, messageId, text, {
+            inline_keyboard: [
+                [{ text: isEn ? "✏️ EDIT PROFILE" : "✏️ መረጃ አስተካክል", callback_data: 'edit_form' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
+            ]
         });
     }
 
@@ -246,9 +273,7 @@ bot.on('callback_query', (query) => {
         const txt = isEn 
             ? "⚜️ <b>Profile Registered Successfully.</b>\n\nReturning to the GILD Ecosystem." 
             : "⚜️ <b>መረጃዎ በክብር ተመዝግቧል።</b>\n\nወደ ዋናው ማውጫ እየተመለሱ ነው።";
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/zXsf8KcY/1777273692663.png', { caption: txt, parse_mode: 'HTML', reply_markup: getMainMenu(chatId) });
+        replaceMessage(chatId, messageId, txt, getMainMenu(chatId), IMG_MAIN);
     }
 
     // ==== SERVICE ====
@@ -257,16 +282,12 @@ bot.on('callback_query', (query) => {
             ? "<b>Tailored Solutions.</b> 💼\n\nDiscover our bespoke service tiers designed to accelerate your growth and refine your presence." 
             : "<b>ልዩ የአገልግሎት ምርጫዎች።</b> 💼\n\nየንግድዎን እድገት የሚያፋጥኑ እና ጥራትዎን የሚገልጹ ልዩ ጥቅሎቻችንን እዚህ ያገኛሉ።";
         
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, txt, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "📦 ELITE PACKAGES" : "📦 የጥቅል አገልግሎቶች", callback_data: 'packages' }],
-                    [{ text: isEn ? "👤 SINGLE SERVICES" : "👤 ነጠላ አገልግሎቶች", callback_data: 'single_services' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
-                ]
-            }
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: isEn ? "📦 ELITE PACKAGES" : "📦 የጥቅል አገልግሎቶች", callback_data: 'packages' }],
+                [{ text: isEn ? "👤 SINGLE SERVICES" : "👤 ነጠላ አገልግሎቶች", callback_data: 'single_services' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
+            ]
         });
     }
 
@@ -275,19 +296,14 @@ bot.on('callback_query', (query) => {
             ? "<b>Select Your Standard.</b>\n\nTo reveal the comprehensive offerings of each tier, please select a package below:" 
             : "<b>የሚመጥንዎን ደረጃ ይምረጡ።</b>\n\nዝርዝር ይዘታቸውን ለመመልከት ከታች ካሉት የጥቅል አገልግሎቶች አንዱን ይምረጡ፡";
         
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/0NbxSN3B/1777274294959.png', {
-            caption: txt,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "𝗚𝗜𝗟𝗗 𝗟𝘂𝘀𝘁𝗲𝗿 (The Foundation)", callback_data: 'pkg_luster' }],
-                    [{ text: "𝗚𝗜𝗟𝗗 𝗥𝗮𝗱𝗶𝗮𝗻𝘁 (Growth Accelerator)", callback_data: 'pkg_radiant' }],
-                    [{ text: "𝗚𝗜𝗟𝗗 𝟮𝟰𝗞 (The Empire Builder)", callback_data: 'pkg_24k' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'service' }]
-                ]
-            }
-        });
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: "𝗚𝗜𝗟𝗗 𝗟𝘂𝘀𝘁𝗲𝗿 (The Foundation)", callback_data: 'pkg_luster' }],
+                [{ text: "𝗚𝗜𝗟𝗗 𝗥𝗮𝗱𝗶𝗮𝗻𝘁 (Growth Accelerator)", callback_data: 'pkg_radiant' }],
+                [{ text: "𝗚𝗜𝗟𝗗 𝟮𝟰𝗞 (The Empire Builder)", callback_data: 'pkg_24k' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'service' }]
+            ]
+        }, IMG_PKG);
     }
 
     // PACKAGES DETAILS
@@ -315,16 +331,11 @@ bot.on('callback_query', (query) => {
 • <b>የእድገት ምክክር (Growth Consultation):</b> በየወሩ የቢዝነስዎን ዲጂታል አፈፃፀም የሚገመግም የስትራቴጂ ውይይት፡፡
 
 <b>የአገልግሎት ጊዜ ይምረጡ:</b>`;
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, text, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_lus_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_lus_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_lus_3' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
-                ]
-            }
+        replaceMessage(chatId, messageId, text, {
+            inline_keyboard: [
+                [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_lus_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_lus_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_lus_3' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
+            ]
         });
     }
 
@@ -352,16 +363,11 @@ bot.on('callback_query', (query) => {
 • <b>የአፈፃፀም ሪፖርት (Performance Intelligence):</b> የሽያጭ ሂደቱን እና የማስታወቂያውን ውጤት በዝርዝር የሚያሳይ ወርሃዊ ሪፖርት፡፡
 
 <b>የአገልግሎት ጊዜ ይምረጡ:</b>`;
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, text, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_rad_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_rad_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_rad_3' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
-                ]
-            }
+        replaceMessage(chatId, messageId, text, {
+            inline_keyboard: [
+                [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_rad_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_rad_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_rad_3' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
+            ]
         });
     }
 
@@ -391,16 +397,11 @@ bot.on('callback_query', (query) => {
 • <b>VIP ልዩ ረዳት:</b> ለማንኛውም አጣዳፊ የቢዝነስ ጉዳዮች ቅድሚያ የሚሰጠው የ24/7 ቀጥታ ግንኙነት፡፡
 
 <b>የአገልግሎት ጊዜ ይምረጡ:</b>`;
-        
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, text, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_24k_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_24k_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_24k_3' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
-                ]
-            }
+        replaceMessage(chatId, messageId, text, {
+            inline_keyboard: [
+                [{ text: isEn ? "1 MONTH" : "1 ወር", callback_data: 'dur_24k_1' }, { text: isEn ? "2 MONTHS" : "2 ወር", callback_data: 'dur_24k_2' }, { text: isEn ? "3 MONTHS" : "3 ወር", callback_data: 'dur_24k_3' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'packages' }]
+            ]
         });
     }
 
@@ -426,15 +427,11 @@ bot.on('callback_query', (query) => {
             ? `⚜️ <b>Premium Selection Confirmed.</b>\n\nYou have chosen <b>[ ${info.name} ]</b>.\nDuration: <b>${info.months} Month(s)</b>\n\n<b>Investment:</b> ${formattedPrice}` 
             : `⚜️ <b>የጥራት ምርጫዎ ተረጋግጧል።</b>\n\nየመረጡት ጥቅል፦ <b>[ ${info.name} ]</b>\nየአገልግሎት ጊዜ፦ <b>${info.months} ወር</b>\n\n<b>ኢንቨስትመንት (ዋጋ):</b> ${formattedPrice}`;
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, successText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "💳 PROCEED TO PAYMENT" : "💳 ወደ ክፍያ", callback_data: 'pay_action' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: backBtn }]
-                ]
-            }
+        replaceMessage(chatId, messageId, successText, {
+            inline_keyboard: [
+                [{ text: isEn ? "💳 PROCEED TO PAYMENT" : "💳 ወደ ክፍያ", callback_data: 'pay_action' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: backBtn }]
+            ]
         });
     }
 
@@ -482,11 +479,7 @@ bot.on('callback_query', (query) => {
 /Strategy
 /BusinessCard`;
         
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, text, {
-            parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'service' }]] }
-        });
+        replaceMessage(chatId, messageId, text, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'service' }]] });
     }
 
     if (data === 'pay_action') {
@@ -502,19 +495,14 @@ bot.on('callback_query', (query) => {
             ? "<b>The GILD Legacy.</b> 🏛️\n\nDive deeper into our story, vision, and the infrastructure that powers our excellence." 
             : "<b>የGILD ማንነት።</b> 🏛️\n\nስለ ታሪካችን፣ ስለ ራዕያችን እና ስለ ስራዎቻችን ዝርዝር መረጃዎችን እዚህ ያገኛሉ።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/PNsksz5H/1777273330007.png', {
-            caption: txt,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "ABOUT US" : "ስለ እኛ", callback_data: 'about_us' }, { text: "FAQ", callback_data: 'faq' }],
-                    [{ text: isEn ? "OUR STORY" : "ታሪካችን", callback_data: 'story' }, { text: isEn ? "VISION & MISSION" : "ራዕይ እና ተልዕኮ", callback_data: 'vision_mission' }],
-                    [{ text: isEn ? "OUR PLATFORM" : "የእኛ ፕላትፎርም", callback_data: 'our_platform' }, { text: isEn ? "SUPPORT" : "ድጋፍ / እገዛ", callback_data: 'support' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
-                ]
-            }
-        });
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: isEn ? "ABOUT US" : "ስለ እኛ", callback_data: 'about_us' }, { text: "FAQ", callback_data: 'faq' }],
+                [{ text: isEn ? "OUR STORY" : "ታሪካችን", callback_data: 'story' }, { text: isEn ? "VISION & MISSION" : "ራዕይ እና ተልዕኮ", callback_data: 'vision_mission' }],
+                [{ text: isEn ? "OUR PLATFORM" : "የእኛ ፕላትፎርም", callback_data: 'our_platform' }, { text: isEn ? "SUPPORT" : "ድጋፍ / እገዛ", callback_data: 'support' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'main_menu' }]
+            ]
+        }, IMG_LEGACY);
     }
 
     if (data === 'about_us') {
@@ -522,11 +510,7 @@ bot.on('callback_query', (query) => {
         
         const fullTextAm = "<b>የGILD ፍልስፍና።</b> ⚜️\n\nGILD ከአንድ ተራ ኤጀንሲ በላይ ነው፤ እርሱ የዲጂታል ልቀት መለኪያ ነው። እኛ ብራንዶችን በረቀቀ ጥበብ እና በስትራቴጂካዊ ጥራት ወደ ላቀ ደረጃ በማድረስ ላይ እንሰራለን።\n\n<b>GILD: ወርቃማው መለኪያ</b>\nበ GILD፣ እያንዳንዱ ትልቅ ቢዝነስ \"የተደበቀ ወርቅ\" እንዳለው እናምናለን—ይህም ጊዜው ባለፈበት ብራንዲንግ እና ተራ ማርኬቲንግ የተሸፈነ እሴት ነው። ተልዕኳችን እነዚህን ደብዛዛ ንብርብሮች ገፈን፣ ከስር ያለውን አንፀባራቂ ወርቅ ማውጣት ነው።\n\nከዜሮ ለሚነሱ አዳዲስ ቢዝነሶች እና ባለ ራዕዮች፣ እኛ ዝም ብለን \"አናወጣም\"—ይልቁንም \"እንቀርጻለን\" (We Forge)። ጥሬ ሀሳብዎን ወስደን ከመጀመሪያው ቀን ጀምሮ ክብርን ወደሚያስገኝ የ 24K ወርቅ ብራንድ ማንነት እንቀይረዋለን። እኛ ተራ የማርኬቲንግ ኤጀንሲ አይደለንም፤ የዲጂታል ዘመን የተዋጣለት አንጥረኞች ነን፤ ቢዝነስዎ በዓለም አቀፍ ደረጃ ጥራቱን ጠብቆ እንዲያንፀባርቅ እናደርጋለን።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, isEn ? fullTextEn : fullTextAm, { 
-            parse_mode: 'HTML', 
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] } 
-        });
+        replaceMessage(chatId, messageId, isEn ? fullTextEn : fullTextAm, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] });
     }
 
     if (data === 'faq') {
@@ -534,12 +518,7 @@ bot.on('callback_query', (query) => {
 
         const fullFaqAm = "<b>ግልፅነት እና ጥራት።</b>\nጊዜዎን እናከብራለን። በሚሰጧቸው አገልግሎቶች ዙሪያ በተደጋጋሚ የሚነሱ ጥያቄዎችን እና ምላሾችን ከታች አዘጋጅተናል፡\n\n❓ <b>1. GILD ከኢትዮጵያ ውጭ ካሉ ደንበኞች ጋር ይሰራል?</b>\n• አዎ። ምንም እንኳን ማዕከላችን አዲስ አበባ ቢሆንም፣ ደረጃችን ዓለም አቀፍ ነው።\n\n❓ <b>2. ከዜሮ ለሚነሳ ቢዝነስ ትረዳላችሁ?</b>\n• በእርግጠኝነት። የቢዝነስዎ መሰረት ጠንካራ ሆኖ የ 24K ወርቅ ማንነት እንዲኖረው እናደርጋለን።\n\n❓ <b>3. የሎጎው \"መገፈፍ (Peeling)\" ትርጉም ምንድነው?</b>\n• ውጤታማ ያልሆኑ ማርኬቲንጎችን ገፎ የድርጅትን እውነተኛ እሴት ማውጣት ማለት ነው።\n\n❓ <b>4. የማማከር (Consultation) አገልግሎት ብቻ ትሰጣላችሁ?</b>\n• አዎ። ከፍተኛ ደረጃ ያለው ስትራቴጂካዊ የማማከር ስራ እንሰራለን።\n\n❓ <b>5. በ Personal Branding ማንን ትረዳላችሁ?</b>\n• ፕሮፌሽናሎችን (ስራ አስኪያጆች፣ ዶክተሮች፣ አማካሪዎች) በዘርፋቸው ክብር ያለው ማንነት እንዲገነቡ እንረዳለን።\n\n❓ <b>6. GILDን ከሌሎች ኤጀንሲዎች ምን ይለየዋል?</b>\n• ሌሎች \"ፖስት\" ማድረግ ላይ ያተኩራሉ፤ እኛ በጥበብ ማርኬቲንግን፣ ዳታን፣ እና አውቶሜሽንን በማዋሃድ የላቀ ውጤት እናመጣለን።\n\n❓ <b>7. ስራ ለመጀመር ምን ማድረግ አለብኝ?</b>\n• በመጀመሪያ የመመዝገቢያ ፎርም ይሞላሉ፣ በመቀጠል አብረን ለመስራት የምክክር ውይይት (Call) እናደርጋለን።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/BQKqYtnG/1777273717527.png', { 
-            caption: isEn ? fullFaqEn : fullFaqAm,
-            parse_mode: 'HTML', 
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] } 
-        });
+        replaceMessage(chatId, messageId, isEn ? fullFaqEn : fullFaqAm, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] }, IMG_FAQ);
     }
 
     if (data === 'story') {
@@ -547,12 +526,7 @@ bot.on('callback_query', (query) => {
 
         const storyAm = "<b>የስኬት መጀመሪያ።</b> 📜\n\n<b>የብራንዶች አልኬሚ (The Alchemy of Brands)</b>\n\n<i>\"እውነተኛ ጥበብ ማለት በተራ ነገሮች ውስጥ የተደበቀውን ወርቅ ማየት መቻል ነው፡፡\"</i>\n\nበጥንታዊው ዘመን፣ <b>አልኬሚ (Alchemy)</b> የሚባል እጅግ ምስጢራዊ ፍልስፍና ነበር፡፡ የጥንት አልኬሚስቶች ትልቁ ምኞት፣ ተራ የሆኑትን ብረቶች እና ማዕድናት ወደ ንፁህ፣ አንፀባራቂ እና ውድ ወርቅነት መቀየር ነበር፡፡ ይህ ጥበብ የነገሮችን ላዩን ገፅታ ብቻ ሳይሆን፣ ውስጣዊ ማንነታቸውን አውጥቶ የማንገስ ሂደት ነው፡፡\n\nበዛሬው የዲጂታል ዓለም፣ የእርስዎ ቢዝነስም ይሄው እውነታ ይገጥመዋል፡፡ ምናልባት በድርጅትዎ ውስጥ ትልቅ 'Premium' ብራንድ የመሆን ሙሉ እምቅ አቅም ታምቆ ይገኛል፡፡ ነገር ግን በተለመዱ ማስታወቂያዎች ጋጋታ ውስጥ ያ የላቀ ማንነትዎ ተቀብሮ ሊሆን ይችላል፡፡\n\n<i>\"ዕንቁ በጭቃ ውስጥ ቢወድቅም እሴቱን አያጣም፤ ነገር ግን እንዲያበራ ጭቃው መገፈፍ አለበት፡፡\"</i>\n\nእኛ በ <b>GILD</b>፣ እራሳችንን እንደ ዘመኑ አልኬሚስቶች እንቆጥራለን፡፡ የእኛ 'አልኬሚ' የእርስዎን ቢዝነስ ከሌሎች ተለይቶ እንዲታይ፣ እንዲከበር እና እንደ ወርቅ እንዲያንፀባርቅ የማድረግ ሂደት ነው፦\n\n<b>1. መገፈፍ (The Peeling):</b> የቆዩ እና የብራንድዎን ውበት የሸፈኑ 'ብረታማ' ንብርብሮችን እንገፍፋለን፡፡\n<b>2. መቅረጽ (The Forging):</b> በስነ-ልቦናዊ ስትራቴጂ ጠንካራ የብራንድ ማንነት እንቀርጻለን፡፡\n<b>3. መለበጥ (The Gilding):</b> ብራንድዎ በገበያው ውስጥ የላቀ ክብር እንዲኖረው እናደርጋለን፡፡\n\n<b>GILD Marketing Agency</b>\n<i>Where Vision Meets Alchemy.</i> ✨";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/SKB0zfcm/1777274278924-1.jpg', { 
-            caption: isEn ? storyEn : storyAm,
-            parse_mode: 'HTML', 
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] } 
-        });
+        replaceMessage(chatId, messageId, isEn ? storyEn : storyAm, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]] }, IMG_STORY);
     }
 
     if (data === 'vision_mission') {
@@ -560,28 +534,19 @@ bot.on('callback_query', (query) => {
             ? "<b>Architecting the Future.</b> 🔭\n\nOur mission is to redefine market standards, while our vision looks toward a future where every partner brand stands as a symbol of luxury and success." 
             : "<b>የወደፊቱን መገንባት።</b> 🔭\n\nተልዕኳችን የገበያ መለኪያዎችን ዳግም መተርጎም ሲሆን፣ ራዕያችን ደግሞ እያንዳንዱ አጋር ብራንድ የልህቀት እና የስኬት ምልክት ሆኖ የሚታይበትን ቀን ማሳካት ነው።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/bwvjXJzh/1777274287552-1.jpg', {
-            caption: txt,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: isEn ? "VISION" : "ራዕይ", callback_data: 'vision_btn' }, { text: isEn ? "MISSION" : "ተልዕኮ", callback_data: 'mission_btn' }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
-                ]
-            }
-        });
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: isEn ? "VISION" : "ራዕይ", callback_data: 'vision_btn' }, { text: isEn ? "MISSION" : "ተልዕኮ", callback_data: 'mission_btn' }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
+            ]
+        }, IMG_VISION);
     }
 
     if (data === 'vision_btn') {
         const textEn = "<b>Our Vision</b> 👁️\n\n\"To be the premier agency of choice in digital alchemy and psychological marketing, transforming businesses with hidden potential into globally recognized, influential, and premium brands.\"";
         const textAm = "<b>ራዕይ (Our Vision)</b> 👁️\n\n\"የተደበቀ እምቅ አቅም ያላቸውን የንግድ ድርጅቶች ወደ ዓለም አቀፍ ደረጃ ወደሚታወቁ፣ ተፅዕኖ ፈጣሪ እና የቅንጦት (Premium) ብራንዶች በመቀየር፣ በዲጂታል አልኬሚ እና ስነ-ልቦናዊ ማርኬቲንግ ቀዳሚው ተመራጭ ኤጀንሲ መሆን።\"";
         
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, isEn ? textEn : textAm, { 
-            parse_mode: 'HTML', 
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'vision_mission' }]] } 
-        });
+        replaceMessage(chatId, messageId, isEn ? textEn : textAm, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'vision_mission' }]] });
     }
 
     if (data === 'mission_btn') {
@@ -589,11 +554,7 @@ bot.on('callback_query', (query) => {
         
         const textAm = "<b>ተልዕኮ (Our Mission)</b> 🎯\n\n\"የደንበኞቻችንን ልዩ ማንነት እና እሴት በጥልቀት በመረዳት፣ ያላደገውን አቅማቸውን በፈጠራ ጥበብ እና በሳይንሳዊ ስነ-ልቦናዊ ስትራቴጂ በማብቃት፣ ብራንዳቸውን በወርቅ መለበጥ (Gilding)። እያንዳንዱ የምንፈጥረው ይዘት የደንበኞቻችንን ክብር፣ ተአማኒነት እና የንግድ ስኬት በዘላቂነት እንዲያድግ ማድረግ፡፡\"\n\n<b>የተቋማችን እሴቶች (Our Core Values)</b>\n• <b>ተአማኒነት (Integrity):</b> የተጋነነ ባዶ ተስፋ ሳይሆን፣ ጥናት ላይ የተመሰረተ ውጤት፡፡\n• <b>የላቀ ጥራት (Excellence):</b> የ \"Premium\" ብራንድ መገለጫ የሆነ ጥራት፡፡\n• <b>ስነ-ልቦናዊ ግንዛቤ:</b> የሰውን ልጅ አእምሮ የሚገዛ ስነ-ልቦናዊ ሳይንስ ከማርኬቲንግ ጋር፡፡\n• <b>ለውጥ አምጪነት:</b> ተራውን ወደ ውድ ወርቅነት መቀየር፡፡";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendMessage(chatId, isEn ? textEn : textAm, { 
-            parse_mode: 'HTML', 
-            reply_markup: { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'vision_mission' }]] } 
-        });
+        replaceMessage(chatId, messageId, isEn ? textEn : textAm, { inline_keyboard: [[{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'vision_mission' }]] });
     }
 
     if (data === 'our_platform') {
@@ -601,19 +562,14 @@ bot.on('callback_query', (query) => {
             ? "<b>Advanced Infrastructure.</b> 🌐\n\nExplore the sophisticated tools and digital frameworks we utilize to power your brand’s growth." 
             : "<b>ዘመናዊ መሠረተ-ልማት።</b> 🌐\n\nየብራንድዎን እድገት ለማፋጠን እና ደረጃውን የጠበቀ እንዲሆን የምንጠቀምባቸውን የዲጂታል አውታሮች እዚህ ያገኛሉ።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/tRVTfBBc/1777273732729.png', {
-            caption: txt,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "FACEBOOK", url: "https://www.facebook.com/share/18Ph7UH2Xq/" }, { text: "TELEGRAM", url: "https://t.me/gild_agency" }],
-                    [{ text: "TIKTOK", url: "https://www.tiktok.com/@gild.agency" }, { text: "INSTAGRAM", url: "https://www.instagram.com/gild_agency" }],
-                    [{ text: "X / TWITTER", url: "https://x.com/Gild_Agency" }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
-                ]
-            }
-        });
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: "FACEBOOK", url: "https://www.facebook.com/share/18Ph7UH2Xq/" }, { text: "TELEGRAM", url: "https://t.me/gild_agency" }],
+                [{ text: "TIKTOK", url: "https://www.tiktok.com/@gild.agency" }, { text: "INSTAGRAM", url: "https://www.instagram.com/gild_agency" }],
+                [{ text: "X / TWITTER", url: "https://x.com/Gild_Agency" }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
+            ]
+        }, IMG_PLATFORM);
     }
 
     if (data === 'support') {
@@ -621,17 +577,12 @@ bot.on('callback_query', (query) => {
             ? "<b>Dedicated Concierge.</b> 🛎️\n\nExceptional service requires exceptional attention. Our dedicated support team is available to assist you." 
             : "<b>ልዩ የድጋፍ አገልግሎት።</b> 🛎️\n\nየላቀ አገልግሎት ልዩ ትኩረትን ይሻል። የእኛ የድጋፍ ቡድን ለማንኛውም አይነት ጥያቄ ዝግጁ ሆኖ ይጠብቅዎታል።";
 
-        bot.deleteMessage(chatId, messageId).catch(() => {});
-        bot.sendPhoto(chatId, 'https://i.postimg.cc/fy4wDh8B/1777273744115.png', {
-            caption: txt,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "TELEGRAM CONCIERGE", url: "https://t.me/Farisman72" }],
-                    [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
-                ]
-            }
-        });
+        replaceMessage(chatId, messageId, txt, {
+            inline_keyboard: [
+                [{ text: "TELEGRAM CONCIERGE", url: "https://t.me/Farisman72" }],
+                [{ text: isEn ? "🔙 BACK" : "🔙 ወደ ኋላ", callback_data: 'more' }]
+            ]
+        }, IMG_SUPPORT);
     }
 });
 
